@@ -458,9 +458,16 @@ export async function POST(request: Request) {
           registeredAt = new Date().toISOString()
         } catch (err) {
           const explained = explainMetaError(err, 'register', metaCtx)
-          registrationError = explained.summary
-          registrationMeta = metaErrorPayload(explained)
-          console.error('Phone number /register failed:', explained.metaMessage, registrationMeta)
+          // For SMB (coexistence / mobile app) numbers, Meta's /register endpoint is not supported
+          // because the number is already registered and active. Treat as registered.
+          if (explained.metaMessage?.includes('not available for SMB businesses')) {
+            registeredAt = new Date().toISOString()
+            registrationError = null
+          } else {
+            registrationError = explained.summary
+            registrationMeta = metaErrorPayload(explained)
+            console.error('Phone number /register failed:', explained.metaMessage, registrationMeta)
+          }
           // We deliberately fall through and still save the row so the
           // user can retry without re-entering everything. The UI
           // surfaces `last_registration_error` so they see WHY it's
